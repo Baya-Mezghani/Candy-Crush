@@ -1,0 +1,7 @@
+public enum CandyType {
+    NORMAL,
+    STRIPED_HORIZONTAL,
+    STRIPED_VERTICAL,
+    EXPLOSIVE,
+    COLOR_BOMB
+}
