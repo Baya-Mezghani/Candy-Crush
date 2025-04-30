@@ -1,18 +1,25 @@
 public class Candy {
-    private int color; // identifiant de couleur (ex: 0 à 5)
+    private int color; // 0 to 5 (or use enum for color too)
+    private CandyType type;
 
     public Candy(int color) {
-
         this.color = color;
+        this.type = CandyType.NORMAL;
     }
 
     public int getColor() {
-
         return color;
     }
 
-    public void setColor(int color) {
+    public CandyType getType() {
+        return type;
+    }
 
-        this.color = color;
+    public void setType(CandyType type) {
+        this.type = type;
+    }
+
+    public boolean isSpecial() {
+        return type != CandyType.NORMAL;
     }
 }

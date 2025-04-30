@@ -1,28 +1,49 @@
+import java.util.Scanner;
+
 public class Game {
-    private Board board;
-    private int score = 0;
-    private int movesLeft = 20;
+    private final Board board;
+    private final int maxMoves;
+    private int movesLeft;
+    private int score;
 
-    public Game(int rows, int cols) {
+    public Game(int rows, int cols, int maxMoves) {
         board = new Board(rows, cols);
+        this.maxMoves = maxMoves;
+        this.movesLeft = maxMoves;
+        this.score = 0;
     }
 
-    public void playTurn(int r1, int c1, int r2, int c2) {
-        board.swap(r1, c1, r2, c2);
-        if (board.isMatchAt(r1, c1) || board.isMatchAt(r2, c2)) {
-            movesLeft--;
-            while (board.removeMatches()) {
-                score += 10;
-                board.dropCandies();
+    public void play() {
+        Scanner scanner = new Scanner(System.in);
+
+        while (movesLeft > 0) {
+            board.display();
+            System.out.println("Moves left: " + movesLeft + " | Score: " + score);
+            System.out.print("Enter move (row1 col1 row2 col2): ");
+            int r1 = scanner.nextInt();
+            int c1 = scanner.nextInt();
+            int r2 = scanner.nextInt();
+            int c2 = scanner.nextInt();
+
+            if (!board.isValidMove(r1, c1, r2, c2)) {
+                System.out.println("Invalid move. Try again.");
+                continue;
             }
-        } else {
-            board.swap(r1, c1, r2, c2); // revert
-        }
-        board.printBoard();
-        System.out.println("Score: " + score + " | Moves left: " + movesLeft);
-    }
 
-    public boolean isGameOver() {
-        return movesLeft <= 0;
+            board.makeMove(r1, c1, r2, c2);
+            movesLeft--;
+
+            boolean matched;
+            do {
+                matched = board.removeMatches();
+                if (matched) {
+                    score += 10; // simple score increment, can be adjusted
+                    board.applyGravity();
+                    board.refillBoard();
+                }
+            } while (matched);
+        }
+
+        System.out.println("Game over! Final score: " + score);
     }
 }
