@@ -37,7 +37,7 @@ public class Game {
             do {
                 matched = board.removeMatches();
                 if (matched) {
-                    score += 10; // simple score increment, can be adjusted
+                    score += 10;
                     board.applyGravity();
                     board.refillBoard();
                 }

@@ -3,7 +3,7 @@ import java.util.List;
 
 public class ComboDetector {
     public static List<Position> findMatches(Candy[][] grid) {
-        List<Position> matched = new ArrayList<>();
+        List<Position> matched = new ArrayList<>(); // A list that stores the coordinates (Position(i, j)) of candies
         int rows = grid.length;
         int cols = grid[0].length;
 
