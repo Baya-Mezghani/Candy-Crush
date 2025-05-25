@@ -17,6 +17,7 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
@@ -37,6 +38,8 @@ public class CandyCrushApp extends Application {
     private Label timerLabel = new Label("Time: 0s");
 
     private Timeline timeline;
+    private int elapsedSeconds = 0;
+
 
     @Override
     public void start(Stage stage) {
@@ -122,7 +125,7 @@ public class CandyCrushApp extends Application {
         root.setStyle("-fx-background-color: cornsilk; -fx-padding:10;");
 
         // Timer binding
-        timerLabel.setText("Time: 0s");
+        timerLabel.setText("Time: 00:00");
         startTimer();
 
         refreshUI();
@@ -135,17 +138,24 @@ public class CandyCrushApp extends Application {
     }
 
     private void startTimer() {
-        if (timeline != null) timeline.stop();
+        if (timeline != null) {
+            timeline.stop();
+        }
+        elapsedSeconds = 0;
+        timerLabel.setText("Time: 00:00");
+
         timeline = new Timeline(
                 new KeyFrame(Duration.seconds(1), e -> {
-                    String text = timerLabel.getText();
-                    int secs = Integer.parseInt(text.replaceAll("\\D",""));
-                    timerLabel.setText("Time: " + (secs+1) + "s");
+                    elapsedSeconds++;
+                    int mins = elapsedSeconds / 60;
+                    int secs = elapsedSeconds % 60;
+                    timerLabel.setText(String.format("Time: %02d:%02d", mins, secs));
                 })
         );
         timeline.setCycleCount(Timeline.INDEFINITE);
         timeline.play();
     }
+
 
     private void loadImages() {
         for (CandyColor color : CandyColor.values()) {
