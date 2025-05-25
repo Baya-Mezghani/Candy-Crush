@@ -1,3 +1,4 @@
+import java.util.List;
 import java.util.Scanner;
 
 public class Game {
@@ -7,10 +8,27 @@ public class Game {
     private int score;
 
     public Game(int rows, int cols, int maxMoves) {
-        board = new Board(rows, cols);
-        this.maxMoves = maxMoves;
+        this.board     = new Board(rows, cols);
+        this.maxMoves  = maxMoves;
         this.movesLeft = maxMoves;
-        this.score = 0;
+        this.score     = 0;
+    }
+    public List<Match> makeMove(int r1, int c1, int r2, int c2) {
+        // delegate to board
+        List<Match> matches = board.makeMoveAndGetMatches(r1, c1, r2, c2);
+        if (matches.isEmpty()) {
+            return matches;  // invalid move, no change
+        }
+        // valid move → consume one move
+        movesLeft--;
+
+        // award 10 points per candy cleared
+        int turnScore = matches.stream()
+                .mapToInt(m -> m.positions.size() * 10)
+                .sum();
+        score += turnScore;
+
+        return matches;
     }
 
     public void play() {
@@ -18,32 +36,55 @@ public class Game {
 
         while (movesLeft > 0) {
             board.display();
-            System.out.println("Moves left: " + movesLeft + " | Score: " + score);
-            System.out.print("Enter move (row1 col1 row2 col2): ");
-            int r1 = scanner.nextInt();
-            int c1 = scanner.nextInt();
-            int r2 = scanner.nextInt();
-            int c2 = scanner.nextInt();
+            System.out.printf("Moves left: %d | Score: %d%n", movesLeft, score);
+            System.out.print("Enter swap (r1 c1 r2 c2): ");
 
-            if (!board.isValidMove(r1, c1, r2, c2)) {
-                System.out.println("Invalid move. Try again.");
+            int r1 = scanner.nextInt(),
+                    c1 = scanner.nextInt(),
+                    r2 = scanner.nextInt(),
+                    c2 = scanner.nextInt();
+
+            // perform the move and get every match this turn
+            List<Match> matches = board.makeMoveAndGetMatches(r1, c1, r2, c2);
+            if (matches.isEmpty()) {
+                System.out.println("Invalid move (no match). Try again.\n");
                 continue;
             }
 
-            board.makeMove(r1, c1, r2, c2);
             movesLeft--;
 
-            boolean matched;
-            do {
-                matched = board.removeMatches();
-                if (matched) {
-                    score += 10;
-                    board.applyGravity();
-                    board.refillBoard();
-                }
-            } while (matched);
+            // print each match and its score
+            int turnScore = 0;
+            System.out.println("Combos this turn:");
+            for (Match m : matches) {
+                int pts = m.positions.size() * 10;
+                turnScore += pts;
+                System.out.printf("  • %s at %s  → +%d%n",
+                        m.resultType,
+                        m.positions,
+                        pts);
+            }
+
+            score += turnScore;
+            System.out.println("Total this turn: " + turnScore + "\n");
         }
 
         System.out.println("Game over! Final score: " + score);
+        scanner.close();
+    }
+
+    /** Expose the player’s current score */
+    public int getScore() {
+        return score;
+    }
+
+    /** Expose how many moves remain */
+    public int getMovesLeft() {
+        return movesLeft;
+    }
+
+    /** Expose the board so the UI can both read and drive it */
+    public Board getBoard() {
+        return board;
     }
 }
