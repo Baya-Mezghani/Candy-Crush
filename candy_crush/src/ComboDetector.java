@@ -60,23 +60,125 @@ public class ComboDetector {
             }
         }
 
-        // 2) T-shape → EXPLOSIVE
-        for (int r = 1; r < rows-1; r++) {
-            for (int c = 1; c < cols-1; c++) {
+        // 2) T-shapes → EXPLOSIVE (4 orientations)
+
+        // 2a) T pointing DOWN:
+        //   B B B
+        //     B
+        //     B
+        for (int r = 0; r <= rows - 3; r++) {
+            for (int c = 1; c < cols - 1; c++) {
                 Candy center = grid[r][c];
                 if (center == null) continue;
                 CandyColor col = center.getColor();
-                if (grid[r][c-1] != null && grid[r][c-1].getColor()==col &&
-                        grid[r][c+1] != null && grid[r][c+1].getColor()==col &&
-                        grid[r-1][c] != null && grid[r-1][c].getColor()==col &&
-                        grid[r+1][c] != null && grid[r+1][c].getColor()==col) {
-
+                // check not already used
+                if (used[r][c] || used[r][c-1] || used[r][c+1]
+                        || used[r+1][c] || used[r+2][c]) continue;
+                // pattern match
+                if (allSame(grid, r,   c-1, col)
+                        && allSame(grid, r,   c+1, col)
+                        && allSame(grid, r+1, c,   col)
+                        && allSame(grid, r+2, c,   col)) {
                     List<Position> pts = List.of(
+                            new Position(r,   c-1),
+                            new Position(r,   c),
+                            new Position(r,   c+1),
+                            new Position(r+1, c),
+                            new Position(r+2, c)
+                    );
+                    pts.forEach(p -> used[p.row][p.col] = true);
+                    matches.add(new Match(pts,
+                            CandyType.EXPLOSIVE,
                             new Position(r, c),
-                            new Position(r, c-1),
-                            new Position(r, c+1),
+                            col));
+                }
+            }
+        }
+
+        // 2b) T pointing UP:
+        //     B
+        //     B
+        //   B B B
+        for (int r = 2; r < rows; r++) {
+            for (int c = 1; c < cols - 1; c++) {
+                Candy center = grid[r][c];
+                if (center == null) continue;
+                CandyColor col = center.getColor();
+                if (used[r][c] || used[r][c-1] || used[r][c+1]
+                        || used[r-1][c] || used[r-2][c]) continue;
+                if (allSame(grid, r,   c-1, col)
+                        && allSame(grid, r,   c+1, col)
+                        && allSame(grid, r-1, c,   col)
+                        && allSame(grid, r-2, c,   col)) {
+                    List<Position> pts = List.of(
+                            new Position(r,   c-1),
+                            new Position(r,   c),
+                            new Position(r,   c+1),
                             new Position(r-1, c),
-                            new Position(r+1, c)
+                            new Position(r-2, c)
+                    );
+                    pts.forEach(p -> used[p.row][p.col] = true);
+                    matches.add(new Match(pts,
+                            CandyType.EXPLOSIVE,
+                            new Position(r, c),
+                            col));
+                }
+            }
+        }
+
+        // 2c) T pointing RIGHT:
+        //     B
+        //   B B
+        //     B
+        //     B
+        for (int r = 1; r < rows - 1; r++) {
+            for (int c = 0; c <= cols - 3; c++) {
+                Candy center = grid[r][c];
+                if (center == null) continue;
+                CandyColor col = center.getColor();
+                if (used[r][c] || used[r-1][c] || used[r+1][c]
+                        || used[r][c+1] || used[r][c+2]) continue;
+                if (allSame(grid, r-1, c,   col)
+                        && allSame(grid, r+1, c,   col)
+                        && allSame(grid, r,   c+1, col)
+                        && allSame(grid, r,   c+2, col)) {
+                    List<Position> pts = List.of(
+                            new Position(r-1, c),
+                            new Position(r,   c),
+                            new Position(r+1, c),
+                            new Position(r,   c+1),
+                            new Position(r,   c+2)
+                    );
+                    pts.forEach(p -> used[p.row][p.col] = true);
+                    matches.add(new Match(pts,
+                            CandyType.EXPLOSIVE,
+                            new Position(r, c),
+                            col));
+                }
+            }
+        }
+
+        // 2d) T pointing LEFT:
+        //   B B B
+        //     B
+        //     B
+        for (int r = 1; r < rows - 1; r++) {
+            for (int c = 2; c < cols; c++) {
+                Candy center = grid[r][c];
+                if (center == null) continue;
+                CandyColor col = center.getColor();
+                if (used[r][c] || used[r-1][c] || used[r+1][c]
+                        || used[r][c-1] || used[r][c-2]) continue;
+                if (allSame(grid, r-1, c,   col)
+                        && allSame(grid, r+1, c,   col)
+                        && allSame(grid, r,   c-1, col)
+                        && allSame(grid, r,   c-2, col)) {
+                    List<Position> pts = List.of(
+                            new Position(r-1, c),
+                            new Position(r,   c),
+                            new Position(r+1, c),
+                            new Position(r,   c-1),
+                            new Position(r,   c-2)
                     );
                     pts.forEach(p -> used[p.row][p.col] = true);
                     matches.add(new Match(pts,

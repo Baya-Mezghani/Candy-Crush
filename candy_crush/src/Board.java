@@ -5,6 +5,8 @@ public class Board {
     private final int rows, cols;
     private final Candy[][] grid;
     private final Random rand = new Random();
+    private Position lastSwap1, lastSwap2;
+
 
     public Board(int rows, int cols) {
         this.rows = rows;
@@ -86,55 +88,57 @@ public class Board {
      *  • COLOR_BOMB:         clears every candy matching `otherColor`
      *                        plus the bomb itself at (r,c)
      */
-    private List<Match> activateSpecial(int r, int c,
-                                        CandyType type,
-                                        CandyColor bombColor,       // only used for bomb
-                                        CandyColor otherColor) {     // only used for bomb
+    // helper to trigger a single special‐swap effect
+    private void triggerSpecialSwap(
+            CandyType type, int er, int ec, CandyColor otherColor,
+            List<Match> total
+    ) {
         List<Position> pts = new ArrayList<>();
-
-        switch(type) {
+        switch (type) {
             case STRIPED_HORIZONTAL:
-                for(int j=0;j<cols;j++) pts.add(new Position(r,j));
+                // clear row 'er'
+                for (int c = 0; c < cols; c++) pts.add(new Position(er, c));
                 break;
-
             case STRIPED_VERTICAL:
-                for(int i=0;i<rows;i++) pts.add(new Position(i,c));
+                // clear column 'ec'
+                for (int r = 0; r < rows; r++) pts.add(new Position(r, ec));
                 break;
-
             case EXPLOSIVE:
-                for(int dr=-1; dr<=1; dr++){
-                    for(int dc=-1; dc<=1; dc++){
-                        int rr=r+dr, cc=c+dc;
-                        if(rr>=0 && rr<rows && cc>=0 && cc<cols)
-                            pts.add(new Position(rr,cc));
+                // clear 3×3 around (er,ec)
+                for (int dr = -1; dr <= 1; dr++) {
+                    for (int dc = -1; dc <= 1; dc++) {
+                        int rr = er + dr, cc = ec + dc;
+                        if (rr >= 0 && rr < rows && cc >= 0 && cc < cols)
+                            pts.add(new Position(rr, cc));
                     }
                 }
                 break;
-
             case COLOR_BOMB:
-                // clear bomb cell itself
-                pts.add(new Position(r,c));
-                // clear every candy of the OTHER color
-                for(int i=0;i<rows;i++){
-                    for(int j=0;j<cols;j++){
-                        Candy cd = grid[i][j];
-                        if(cd!=null && cd.getColor()==otherColor) {
-                            pts.add(new Position(i,j));
+                // clear the bomb itself at (er,ec)
+                pts.add(new Position(er, ec));
+                // clear every candy matching otherColor
+                for (int r = 0; r < rows; r++) {
+                    for (int c = 0; c < cols; c++) {
+                        Candy cd = grid[r][c];
+                        if (cd != null && cd.getColor() == otherColor) {
+                            pts.add(new Position(r, c));
                         }
                     }
                 }
                 break;
-
             default:
-                return Collections.emptyList();
+                return;
         }
 
-        // actually clear them now
-        for(Position p: pts) {
+        // actually clear
+        for (Position p : pts) {
             grid[p.row][p.col] = null;
         }
-        // we treat each activation as a NORMAL clear for scoring
-        return List.of(new Match(pts, CandyType.NORMAL, null, null));
+        // record it as one big NORMAL‐type match
+        total.add(new Match(pts, CandyType.NORMAL, null, null));
+
+        applyGravity();
+        refillBoard();
     }
 
 
@@ -147,62 +151,79 @@ public class Board {
      * Returns **all** Match objects found this turn.
      */
     public List<Match> makeMoveAndGetMatches(int r1, int c1, int r2, int c2) {
-        if (!isValidMove(r1,c1,r2,c2)) {
-            return Collections.emptyList();
-        }
+        if (!isValidMove(r1, c1, r2, c2)) return Collections.emptyList();
 
-        // remember what's being swapped
-        Candy c1Candy = grid[r1][c1];
-        Candy c2Candy = grid[r2][c2];
-        CandyType t1 = c1Candy.getType();
-        CandyType t2 = c2Candy.getType();
-        CandyColor col1 = c1Candy.getColor();
-        CandyColor col2 = c2Candy.getColor();
+        // remember swap coords
+        lastSwap1 = new Position(r1, c1);
+        lastSwap2 = new Position(r2, c2);
+
+        // remember what was there
+        Candy before1 = grid[r1][c1];
+        Candy before2 = grid[r2][c2];
+        CandyType t1 = before1.getType(), t2 = before2.getType();
+        CandyColor col1 = before1.getColor(), col2 = before2.getColor();
 
         // do the swap
-        swap(r1,c1,r2,c2);
+        swap(r1, c1, r2, c2);
 
         List<Match> total = new ArrayList<>();
 
-        // 1) if it involved a special, activate it immediately
-        if (t1 != CandyType.NORMAL || t2 != CandyType.NORMAL) {
-            // whichever one WAS special (we swapped it) fires at its new position
-            if (t1 != CandyType.NORMAL) {
-                total.addAll( activateSpecial(r2, c2,
-                        t1,
-                        col1,    // bombColor (unused unless COLOR_BOMB)
-                        col2) ); // otherColor
-            } else {
-                total.addAll( activateSpecial(r1, c1,
-                        t2,
-                        col2,
-                        col1) );
+        // 1) handle special‐for‐normal swap
+        boolean s1 = t1 != CandyType.NORMAL;
+        boolean s2 = t2 != CandyType.NORMAL;
+        if (s1 || s2) {
+            // if both are special, trigger both on each other's spots
+            if (s1) {
+                triggerSpecialSwap(t1, r2, c2, col2, total);
             }
-
-            // gravity + refill once, then allow cascades from random/new matches
-            applyGravity();
-            refillBoard();
+            if (s2) {
+                triggerSpecialSwap(t2, r1, c1, col1, total);
+            }
         }
 
-        // 2) now do normal ComboDetector‐driven cascades
-        while (true) {
-            List<Match> found = ComboDetector.findMatches(grid);
-            if (found.isEmpty()) break;
+        // 2) now do your normal spawn‐on‐swap + cascade logic
+        //    (we'll catch any new 4/T/L/5 bonuses here)
 
-            // clear & spawn any new specials
-            for (Match m : found) {
-                for (Position p : m.positions) {
-                    grid[p.row][p.col] = null;
-                }
+        // first pass: catch any special‐creating match
+        List<Match> initial = ComboDetector.findMatches(grid);
+        if (!initial.isEmpty()) {
+            for (Match m : initial) {
+                // if it’s special, force it to the swapped cell
                 if (m.isSpecial()) {
-                    // same logic you already had for placing newly created specials
+                    Position spawnAt = null;
+                    if (m.positions.contains(lastSwap1)) spawnAt = lastSwap1;
+                    else if (m.positions.contains(lastSwap2)) spawnAt = lastSwap2;
+                    if (spawnAt != null) {
+                        m = new Match(m.positions, m.resultType, spawnAt, m.color);
+                    }
+                }
+                // clear matched candies
+                for (Position p : m.positions) grid[p.row][p.col] = null;
+                // spawn the new special, if any
+                if (m.isSpecial()) {
                     grid[m.specialPosition.row]
                             [m.specialPosition.col] =
                             new Candy(m.color, m.resultType);
                 }
+                total.add(m);
             }
-            total.addAll(found);
+            applyGravity();
+            refillBoard();
+        }
 
+        // 3) full cascade
+        while (true) {
+            List<Match> found = ComboDetector.findMatches(grid);
+            if (found.isEmpty()) break;
+            for (Match m : found) {
+                for (Position p : m.positions) grid[p.row][p.col] = null;
+                if (m.isSpecial()) {
+                    grid[m.specialPosition.row]
+                            [m.specialPosition.col] =
+                            new Candy(m.color, m.resultType);
+                }
+                total.add(m);
+            }
             applyGravity();
             refillBoard();
         }

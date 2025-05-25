@@ -18,8 +18,4 @@ public class Position {
         return row == p.row && col == p.col;
     }
 
-    @Override
-    public int hashCode() {
-        return 31 * row + col;
-    }
 }
