@@ -1,25 +1,35 @@
 public class Candy {
-    private int color; // 0 to 5 (or use enum for color too)
+    private CandyColor color;
     private CandyType type;
 
-    public Candy(int color) {
+    public Candy(CandyColor color) {
         this.color = color;
-        this.type = CandyType.NORMAL;
+        this.type  = CandyType.NORMAL;
     }
 
-    public int getColor() {
-        return color;
+    public Candy(CandyColor color, CandyType type) {
+        this.color = color;
+        this.type  = type;
     }
 
-    public CandyType getType() {
-        return type;
-    }
-
-    public void setType(CandyType type) {
-        this.type = type;
-    }
+    public CandyColor getColor() { return color; }
+    public CandyType getType()    { return type; }
 
     public boolean isSpecial() {
         return type != CandyType.NORMAL;
+    }
+
+    @Override
+    public String toString() {
+        // First letter of the color
+        char c = color.name().charAt(0);
+        switch (type) {
+            case NORMAL:             return "" + c;
+            case STRIPED_HORIZONTAL: return c + "-";
+            case STRIPED_VERTICAL:   return c + "|";
+            case EXPLOSIVE:          return c + "o";
+            case COLOR_BOMB:         return c + "*";
+            default:                 return "" + c;
+        }
     }
 }
