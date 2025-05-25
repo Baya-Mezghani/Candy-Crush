@@ -17,29 +17,30 @@ import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
-
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class CandyCrushApp extends Application {
-    private static final int ROWS = 9, COLS = 9;
-    private static final int MAX_MOVES = 20;
+    private static final int ROWS         = 9;
+    private static final int COLS         = 9;
+    private static final int MAX_MOVES    = 20;
 
-    private final Game game  = new Game(ROWS, COLS, MAX_MOVES);
-    private final Board board = game.getBoard();
+    private int targetScore;
+
+    private Game  game;
+    private Board board;
 
     private final ImageView[][] cells = new ImageView[ROWS][COLS];
     private final Map<String,Image> images = new HashMap<>();
 
-    private Label scoreLabel = new Label("Score: 0");
-    private Label movesLabel = new Label("Moves: " + MAX_MOVES);
-    private Label timerLabel = new Label("Time: 0s");
+    private Label movesLabel = new Label();
+    private Label timerLabel = new Label("Time: 00:00");
+    private Label scoreLabel = new Label();
 
     private Timeline timeline;
     private int elapsedSeconds = 0;
-
 
     @Override
     public void start(Stage stage) {
@@ -48,114 +49,137 @@ public class CandyCrushApp extends Application {
     }
 
     private void showMenu(Stage stage) {
-        // Background image
         ImageView bg = new ImageView(images.get("BACKGROUND"));
         bg.setFitWidth(600);
         bg.setFitHeight(400);
         bg.setPreserveRatio(false);
 
-        // Title in maroon
         Label title = new Label("CANDY CRUSH");
         title.setFont(Font.font("Arial Rounded MT Bold", FontWeight.EXTRA_BOLD, 50));
-        title.setTextFill(Color.MAROON);
-        title.setEffect(new DropShadow(5, Color.DARKRED));
+        title.setTextFill(Color.DARKRED);
+        title.setEffect(new DropShadow(5, Color.MAROON));
 
-        // Start Button (unchanged)
         Button startBtn = new Button("START");
         startBtn.setFont(Font.font("Arial Rounded MT Bold", FontWeight.BOLD, 24));
         startBtn.setTextFill(Color.WHITE);
         startBtn.setStyle(
-                "-fx-background-radius: 30; " +
-                        "-fx-padding: 10 30; " +
-                        "-fx-background-color: " +
-                        "linear-gradient(to right, #ff9a9e, #fad0c4)"
+                "-fx-background-radius:30; -fx-padding:10 30; " +
+                        "-fx-background-color: linear-gradient(to right, #ff9a9e, #fad0c4)"
         );
-        startBtn.setOnAction(e -> showGame(stage));
+        startBtn.setOnAction(e -> showDifficulty(stage));
 
-        // Credit, bigger and in gold
-        Label credit = new Label("Made by Melek and Baya");
+        Label credit = new Label("Made by Melek & Baya");
         credit.setFont(Font.font("Arial", FontPosture.ITALIC, 18));
         credit.setTextFill(Color.DARKRED);
-        credit.setPadding(new Insets(5));
 
-        // Menu layout with semi-transparent white backing
         VBox menuBox = new VBox(20, title, startBtn, credit);
         menuBox.setAlignment(Pos.CENTER);
         menuBox.setPadding(new Insets(20));
         menuBox.setBackground(new Background(new BackgroundFill(
-                Color.rgb(255, 255, 255, 0.4),   // white at 60% opacity
-                new CornerRadii(15),             // rounded corners
-                Insets.EMPTY
+                Color.rgb(255,255,255,0.5), new CornerRadii(15), Insets.EMPTY
         )));
 
-        // Stack background + menu
         StackPane root = new StackPane(bg, menuBox);
         Scene scene = new Scene(root, 600, 400);
-
         stage.setScene(scene);
         stage.setTitle("Candy Crush");
         stage.show();
     }
+    private void showDifficulty(Stage stage) {
+        ImageView bg = new ImageView(images.get("BACKGROUND"));
+        bg.setFitWidth(600); bg.setFitHeight(400); bg.setPreserveRatio(false);
+
+        Label prompt = new Label("Select Difficulty");
+        prompt.setFont(Font.font("Arial Rounded MT Bold", FontWeight.BOLD, 36));
+        prompt.setTextFill(Color.MAROON);
+        prompt.setEffect(new DropShadow(3, Color.DARKRED));
+
+        // easy / medium / hard buttons
+        Button easy = makeDiffButton("EASY\n(700 pts)", 800, stage);
+        Button med  = makeDiffButton("MEDIUM\n(1200 pts)", 1200, stage);
+        Button hard = makeDiffButton("HARD\n(1700 pts)", 1700, stage);
+
+        HBox box = new HBox(20, easy, med, hard);
+        box.setAlignment(Pos.CENTER);
+
+        VBox vbox = new VBox(30, prompt, box);
+        vbox.setAlignment(Pos.CENTER);
+        vbox.setPadding(new Insets(20));
+        vbox.setBackground(new Background(new BackgroundFill(
+                Color.rgb(255,255,255,0.6), new CornerRadii(15), Insets.EMPTY
+        )));
+
+        StackPane root = new StackPane(bg, vbox);
+        stage.setScene(new Scene(root, 600, 400));
+        stage.show();
+    }
+
+    private Button makeDiffButton(String text, int pts, Stage stage) {
+        Button b = new Button(text);
+        b.setFont(Font.font("Arial Rounded MT Bold", FontWeight.BOLD, 20));
+        b.setTextFill(Color.WHITE);
+        b.setStyle(
+                "-fx-background-radius:20; -fx-padding:10 20; " +
+                        "-fx-background-color:linear-gradient(to bottom, #a1c4fd,#c2e9fb)"
+        );
+        b.setOnAction(e -> {
+            targetScore = pts;
+            showGame(stage);
+        });
+        return b;
+    }
 
     private void showGame(Stage stage) {
-        // Top bar: moves | timer | score
+        game  = new Game(ROWS, COLS, MAX_MOVES);
+        board = game.getBoard();
+        elapsedSeconds = 0;
+
+        movesLabel.setText("Moves: " + MAX_MOVES);
+        scoreLabel.setText("Score: 0/" + targetScore);
+        timerLabel.setText("Time: 00:00");
+
         HBox topBar = new HBox(30, movesLabel, timerLabel, scoreLabel);
         topBar.setAlignment(Pos.CENTER);
         topBar.setStyle("-fx-padding:10; -fx-background-color: lightgoldenrodyellow;");
 
-        // Grid of candies
         GridPane grid = new GridPane();
-        grid.setHgap(2);
-        grid.setVgap(2);
-        for(int r=0;r<ROWS;r++) {
-            for(int c=0;c<COLS;c++) {
+        grid.setHgap(2); grid.setVgap(2);
+        for (int r = 0; r < ROWS; r++) {
+            for (int c = 0; c < COLS; c++) {
                 ImageView iv = new ImageView();
-                iv.setFitWidth(40);
-                iv.setFitHeight(40);
+                iv.setFitWidth(40); iv.setFitHeight(40);
                 cells[r][c] = iv;
                 grid.add(iv, c, r);
-
                 final int rr = r, cc = c;
                 iv.setOnMouseClicked(ev -> handleClick(rr, cc));
             }
         }
 
-        BorderPane root = new BorderPane(grid);
-        root.setTop(topBar);
-        root.setStyle("-fx-background-color: cornsilk; -fx-padding:10;");
+        BorderPane gamePane = new BorderPane(grid);
+        gamePane.setTop(topBar);
+        gamePane.setStyle("-fx-background-color: cornsilk; -fx-padding:10;");
 
-        // Timer binding
-        timerLabel.setText("Time: 00:00");
-        startTimer();
-
-        refreshUI();
-
+        StackPane root = new StackPane(gamePane);
         Scene scene = new Scene(root);
         stage.setScene(scene);
         stage.setTitle("Candy Crush");
         stage.sizeToScene();
         stage.show();
+
+        startTimer();
+        refreshUI();
     }
 
     private void startTimer() {
-        if (timeline != null) {
-            timeline.stop();
-        }
-        elapsedSeconds = 0;
-        timerLabel.setText("Time: 00:00");
-
-        timeline = new Timeline(
-                new KeyFrame(Duration.seconds(1), e -> {
-                    elapsedSeconds++;
-                    int mins = elapsedSeconds / 60;
-                    int secs = elapsedSeconds % 60;
-                    timerLabel.setText(String.format("Time: %02d:%02d", mins, secs));
-                })
-        );
+        if (timeline != null) timeline.stop();
+        timeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+            elapsedSeconds++;
+            int m = elapsedSeconds/60, s = elapsedSeconds%60;
+            timerLabel.setText(String.format("Time: %02d:%02d", m, s));
+        }));
         timeline.setCycleCount(Timeline.INDEFINITE);
         timeline.play();
     }
-
 
     private void loadImages() {
         for (CandyColor color : CandyColor.values()) {
@@ -178,23 +202,23 @@ public class CandyCrushApp extends Application {
         loadImage("BACKGROUND", "/images/background.jpg");
     }
 
-    private void loadImage(String key, String resourcePath) {
-        InputStream is = getClass().getResourceAsStream(resourcePath);
-        if (is == null) {
-            throw new IllegalStateException("Resource not found: " + resourcePath);
-        }
+    private void loadImage(String key, String path) {
+        InputStream is = getClass().getResourceAsStream(path);
+        if (is == null) throw new IllegalStateException("Missing: " + path);
         images.put(key, new Image(is));
     }
 
     private void refreshUI() {
-        movesLabel.setText("Moves: "     + game.getMovesLeft());
-        scoreLabel.setText("Score: "     + game.getScore());
+        movesLabel.setText("Moves: " + game.getMovesLeft());
+        scoreLabel.setText(
+                String.format("Score: %d/%d", game.getScore(), targetScore)
+        );
 
-        Candy[][] gridArr = board.getGrid();
-        for (int r = 0; r < ROWS; r++) {
-            for (int c = 0; c < COLS; c++) {
-                Candy candy = gridArr[r][c];
-                String key   = candy.getColor() + "_" + candy.getType();
+        Candy[][] g = board.getGrid();
+        for (int r=0; r<ROWS; r++) {
+            for (int c=0; c<COLS; c++) {
+                Candy candy = g[r][c];
+                String key = candy.getColor() + "_" + candy.getType();
                 cells[r][c].setImage(images.get(key));
             }
         }
@@ -208,8 +232,54 @@ public class CandyCrushApp extends Application {
             game.makeMove(lastClick[0], lastClick[1], r, c);
             lastClick = null;
             refreshUI();
+
+            if (game.getScore() >= targetScore) {
+                showEndDialog("Congratulations!",
+                        "You reached your goal!", true);
+            } else if (game.getMovesLeft() == 0) {
+                showEndDialog("Game Over",
+                        "No moves left!\nFinal score: " + game.getScore(),
+                        false);
+            }
         }
     }
+
+    private void showEndDialog(String header, String msg, boolean won) {
+        if (timeline != null) {
+            timeline.stop();
+        }
+        Label h = new Label(header);
+        h.setFont(Font.font("Arial Rounded MT Bold", 36));
+        h.setTextFill(won ? Color.LIGHTGREEN : Color.RED);
+
+        Label m = new Label(msg);
+        m.setFont(Font.font("Arial", 20));
+        m.setTextFill(Color.WHITE);
+
+        Button retry = new Button("PLAY AGAIN");
+        retry.setFont(Font.font("Arial Rounded MT Bold", 24));
+        retry.setTextFill(Color.WHITE);
+        retry.setStyle(
+                "-fx-background-radius:30; -fx-padding:10 20; " +
+                        "-fx-background-color:linear-gradient(to right,#a18cd1,#fbc2eb)"
+        );
+        retry.setOnAction(ev -> {
+            Stage stg = (Stage) retry.getScene().getWindow();
+            showGame(stg);  // completely rebuilds the game UI
+        });
+
+        VBox box = new VBox(20, h, m, retry);
+        box.setAlignment(Pos.CENTER);
+        box.setPadding(new Insets(20));
+        box.setBackground(new Background(new BackgroundFill(
+                Color.rgb(0,0,0,0.7), new CornerRadii(10), Insets.EMPTY
+        )));
+
+        // Overlay on top of the existing gamePane
+        StackPane root = (StackPane) timerLabel.getScene().getRoot();
+        root.getChildren().add(box);
+    }
+
 
     public static void main(String[] args) {
         launch(args);
