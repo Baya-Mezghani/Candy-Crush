@@ -3,6 +3,8 @@ public class Main {
         int rows = 9;
         int cols = 9;
         int maxMoves = 20;
+        int targetScore = 1000;
+
 
         System.out.println("Welcome to Candy Crush (Java Edition)!");
         Game game = new Game(rows, cols, maxMoves);

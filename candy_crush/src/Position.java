@@ -1,19 +1,21 @@
 public class Position {
-    public int row, col;
+    public final int row, col;
     public Position(int row, int col) {
         this.row = row;
         this.col = col;
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof Position p)
-            return this.row == p.row && this.col == p.col;
-        return false;
+    public String toString() {
+        return "(" + row + "," + col + ")";
     }
 
     @Override
-    public int hashCode() {
-        return row * 31 + col;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Position)) return false;
+        Position p = (Position)o;
+        return row == p.row && col == p.col;
     }
+
 }
